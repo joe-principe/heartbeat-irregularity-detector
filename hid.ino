@@ -1,45 +1,42 @@
-#include <MAX30105.h>
-#include <heartRate.h>
+#include <PulseSensorPlayground.h>
 #include <spo2_algorithm.h>
-
+#include <LiquidCrystal.h>
+#include <heartRate.h>
+#include <MAX30105.h>
+#include <Wire.h>
 
 #define USE_ARDUINO_INTERRUPTS true
 #define WINDOW_SIZE 5
-#include <PulseSensorPlayground.h>
-#include <LiquidCrystal.h>
-#include <Wire.h>
 
+void Push( int array[], int arrLen, int newest );
 
+/* The digital output pins into which the LCD is connected                   */
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+LiquidCrystal lcd( rs, en, d4, d5, d6, d7 );
 
+/* The analog input pin into which the heartbeat sensor is connected         */
 const int PULSE_SENSOR_PIN = 0;
 
-int Signal;
+/* A length of 240 samples to capture 6s of signal data                      */
+int signalBufferLength = 240;
 
-int INDEX  = 0;
-int VALUE = 0;
-int SUM = 0;
-int READINGS[WINDOW_SIZE];
-int AVERAGED = 0;
+/* A buffer array to contain the signal samples over 6s                      */
+int signalBuffer[signalBufferLength] = { 0 };
 
-/* bufLen of 50 to capture >1s of signal data */
-int bufLen = 50;
-int signalBuffer[50];
-/* 2 indices because there will not be more than 2 peaks in 50 values */
-int peakIndices[2];
+/* A length of 12 samples to capture the peaks of the signal data            */
+int peakIndicesLength = 12;
+
+/* An array to contain the locations of peaks in the signal                  */
+int peakIndices[peakIndicesLength];
+
+/* The value of the current peak                                             */
 int peakValue = 0;
 
 PulseSensorPlayground pulseSensor;
 MAX30105 particleSensor;
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(9600);
-
-  // lcd.begin(16, 2);
-
-  // lcd.print("BPM: ");
 
   pulseSensor.analogInput(PULSE_SENSOR_PIN);
   pulseSensor.setThreshold(1000);
@@ -47,55 +44,35 @@ void setup() {
   if (pulseSensor.begin()) {
     Serial.println("PulseSensor object created");
   }
-
-  /*if(particleSensor.begin() == false){
-    Serial.println("MAX30102 was not found.");
-    while(1);
-  } */
-  // particleSensor.setup();
 }
+
+/* 1: Find the peaks of the signal over a time window                        *
+ * The longer the buffer length, the longer the time window. Longer time     *
+ * windows will give more peaks, which could help for better irregularity    *
+ * detection                                                                 *
+ *                                                                           *
+ * 2: Calculate the time between the peaks of the signal. This will be the   *
+ * key to finding tachycardia and bradycardia in the signal                  *
+ *                                                                           *
+ * 3: Figure out how to detect irregularities with the SpO2 values from the  *
+ * oximeter                                                                  *
+ *                                                                           *
+ * 4: Profit B)                                                              */
 void loop() {
 
-  Signal = analogRead(PULSE_SENSOR_PIN);
-  /*VALUE = Signal;
-  SUM = SUM - READINGS[INDEX];
-  READINGS[INDEX] = VALUE;
-  SUM += VALUE;
-  INDEX =(INDEX +1) % WINDOW_SIZE;
-  AVERAGED = SUM / WINDOW_SIZE;*/
+  int Signal = analogRead(PULSE_SENSOR_PIN);
 
-  int myBPM = pulseSensor.getBeatsPerMinute();
-
-  /*lcd.setCursor(5, 0);
-  lcd.print("BPM: ");
-  lcd.print(myBPM);*/
-
-  // Serial.println(Signal);
-  
-  //Serial.print(VALUE);
-  //Serial.print(",");
-  //Serial.println(AVERAGED);
-
-  /*Serial.print(" R[");
-	Serial.print(particleSensor.getRed());
-	Serial.print("] IR[");
-	Serial.print(particleSensor.getIR());
-	Serial.println("]");*/
-
-  for ( int i = 0; i < bufLen; i++ ) {
-    signalBuffer[i] = signalBuffer[i + 1];
-  }
-  signalBuffer[49] = Signal;
+  Push( signalBuffer, signalBufferLength, Signal );
 
   int peakIndex = 0;
 
   int sum = 0;
-  for ( int i = 0; i < bufLen; i++ ) {
+  for ( int i = 0; i < signalBufferLength; i++ ) {
     sum += signalBuffer[i];
   }
-  int baseline = sum / bufLen;
+  int baseline = sum / signalBufferLength;
 
-  for ( int i = 0; i < bufLen; i++ ) {
+  for ( int i = 0; i < signalBufferLength; i++ ) {
     if ( signalBuffer[i] > baseline ) {
       if ( peakValue == 0 || signalBuffer[i] > peakValue ) {
         peakIndex = i;
@@ -112,17 +89,25 @@ void loop() {
       Serial.print(" peakIndices[1]: ");
       Serial.print(peakIndices[1]);
       Serial.println("\n---");
+
       peakIndex = 0;
       peakValue = 0;
     }
   }
 
   if ( peakIndex != 0 ) {
-    /* peakIndices.push( peakIndex ); */
+    Push( peakIndices, peakIndicesLength, peakIndex );
   }
 
-
   delay(25);
-  // lcd.clear();
 }
 
+/* Pushes a new item onto the array while removing the oldest item           *
+ * Oldest @ index 0, newest at index arrLen - 1                              */
+void Push( int array[], int arrLen, int newest ) {
+  for ( int i = 0; i < arrLen; i++ ) {
+    array[i] = array[i + 1];
+  }
+  array[arrLen - 1] = newest;
+}
+/* EOF */
