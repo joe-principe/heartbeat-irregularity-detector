@@ -4,6 +4,7 @@
 #include <MAX30105.h>
 #include <Wire.h>
 
+/* This define statement has to go before the PulseSensor include directive  */
 #define USE_ARDUINO_INTERRUPTS true
 #include <PulseSensorPlayground.h>
 
@@ -42,9 +43,6 @@ const int peak_times_length = 64;
 /* An array to contain the times of the peaks in the signal                  */
 unsigned long peak_times[peak_times_length] = { 0 };
 
-/* The value of the current peak                                             */
-int peak_value = 0;
-
 /* The pulse sensor object                                                   */
 PulseSensorPlayground pulseSensor;
 
@@ -59,7 +57,7 @@ void setup() {
 
   if (pulseSensor.begin()) {
     Serial.println( "PulseSensor object created" );
-  }
+  } /* if */
 }
 
 /* 1: Find the peaks of the signal over a time window                        *
@@ -88,10 +86,11 @@ void loop() {
 
     for ( int i = 0; i < signal_buffer_length; i++ ) {
       sum += signal_buffer[i];    
-    }
+    } /* for */
     
     int baseline = sum / signal_buffer_length;
     int peak_index = 0;
+    int peak_value = 0;
 
     /*                                                                       */
     for ( int i = 0; i < signal_buffer_length; i++ ) {
@@ -99,19 +98,19 @@ void loop() {
         if ( peak_value == 0 || signal_buffer[i] > peak_value ) {
           peak_index = i;
           peak_value = signal_buffer[i];
-        }
+        } /* if */
       } else if ( signal_buffer[i] < baseline && peak_index != 0 ) {
         push( peak_indices, peak_indices_length, peak_index );
 
         peak_index = 0;
         peak_value = 0;
-      }
-    }
+      } /* if-else */
+    } /* for */
 
     if ( peak_index != 0 ) {
       push( peak_indices, peak_indices_length, peak_index );
-    } 
-  }
+    } /* if */
+  } /* if */
 
   delay(25);
 }
@@ -124,7 +123,7 @@ void loop() {
 void push( int array[], int arr_len, int newest ) {
   for ( int i = 0; i < arr_len; i++ ) {
     array[i] = array[i + 1];
-  }
+  } /* for */
   array[arr_len - 1] = newest;
 }
 /* EOF */
