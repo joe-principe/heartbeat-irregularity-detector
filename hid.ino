@@ -8,7 +8,8 @@
 #define USE_ARDUINO_INTERRUPTS true
 #define WINDOW_SIZE 5
 
-void Push( int array[], int arrLen, int newest );
+void push( int array[], int arr_len, int newest );
+int* widenArray( int array[], int arr_len );
 
 /* The digital output pins into which the LCD is connected                   */
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
@@ -18,31 +19,31 @@ LiquidCrystal lcd( rs, en, d4, d5, d6, d7 );
 const int PULSE_SENSOR_PIN = 0;
 
 /* A length of 240 samples to capture 6s of signal data                      */
-int signalBufferLength = 240;
+const int signal_buffer_length = 240;
 
 /* A buffer array to contain the signal samples over 6s                      */
-int signalBuffer[signalBufferLength] = { 0 };
+int signal_buffer[signal_buffer_length] = { 0 };
 
 /* A length of 12 samples to capture the peaks of the signal data            */
-int peakIndicesLength = 12;
+int peak_indices_length = 12;
 
 /* An array to contain the locations of peaks in the signal                  */
-int peakIndices[peakIndicesLength];
+int peak_indices[peak_indices_length];
 
 /* The value of the current peak                                             */
-int peakValue = 0;
+int peak_value = 0;
 
 PulseSensorPlayground pulseSensor;
 MAX30105 particleSensor;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin( 9600 );
 
-  pulseSensor.analogInput(PULSE_SENSOR_PIN);
-  pulseSensor.setThreshold(1000);
+  pulseSensor.analogInput( PULSE_SENSOR_PIN );
+  pulseSensor.setThreshold( 1000 );
 
   if (pulseSensor.begin()) {
-    Serial.println("PulseSensor object created");
+    Serial.println( "PulseSensor object created" );
   }
 }
 
@@ -60,54 +61,56 @@ void setup() {
  * 4: Profit B)                                                              */
 void loop() {
 
-  int Signal = analogRead(PULSE_SENSOR_PIN);
+  int Signal = analogRead( PULSE_SENSOR_PIN );
 
-  Push( signalBuffer, signalBufferLength, Signal );
+  push( signal_buffer, signal_buffer_length, Signal );
 
-  int peakIndex = 0;
+  int peak_index = 0;  
 
-  int sum = 0;
-  for ( int i = 0; i < signalBufferLength; i++ ) {
-    sum += signalBuffer[i];
-  }
-  int baseline = sum / signalBufferLength;
-
-  for ( int i = 0; i < signalBufferLength; i++ ) {
-    if ( signalBuffer[i] > baseline ) {
-      if ( peakValue == 0 || signalBuffer[i] > peakValue ) {
-        peakIndex = i;
-        peakValue = signalBuffer[i];
+  for ( int i = 0; i < signal_buffer_length; i++ ) {
+    if ( signal_buffer[i] > baseline ) {
+      if ( peak_value == 0 || signal_buffer[i] > peak_value ) {
+        peak_index = i;
+        peak_value = signal_buffer[i];
       }
-    } else if ( signalBuffer[i] < baseline && peakIndex != 0 ) {
-      /* peakIndices.push( peakIndex ); */
+    } else if ( signal_buffer[i] < baseline && peak_index != 0 ) {
+      peak_indices[0] = peak_indices[1];
+      peak_indices[1] = peak_index;
 
-      peakIndices[0] = peakIndices[1];
-      peakIndices[1] = peakIndex;
-
-      Serial.print("peakIndices[0]: ");
-      Serial.print(peakIndices[0]);
-      Serial.print(" peakIndices[1]: ");
-      Serial.print(peakIndices[1]);
-      Serial.println("\n---");
-
-      peakIndex = 0;
-      peakValue = 0;
+      peak_index = 0;
+      peak_value = 0;
     }
   }
 
-  if ( peakIndex != 0 ) {
-    Push( peakIndices, peakIndicesLength, peakIndex );
+  if ( peak_index != 0 ) {
+    push( peak_indices, peak_indices_length, peak_index );
   }
 
   delay(25);
 }
 
 /* Pushes a new item onto the array while removing the oldest item           *
- * Oldest @ index 0, newest at index arrLen - 1                              */
-void Push( int array[], int arrLen, int newest ) {
-  for ( int i = 0; i < arrLen; i++ ) {
+ * Oldest @ index 0, newest at index arr_len - 1                              *
+ * array[] - The array onto which new items will be pushed                   *
+ * arr_len - The length of the array                                          *
+ * newest - The newest item being pushed onto the array                      */
+void push( int array[], int arr_len, int newest ) {
+  for ( int i = 0; i < arr_len; i++ ) {
     array[i] = array[i + 1];
   }
-  array[arrLen - 1] = newest;
+  array[arr_len - 1] = newest;
+}
+
+/* Doubles an array by returning a new one with twice the length             *
+ * array[] - The original array                                              *
+ * arr_len - The length of the original array                                 */
+int* widenArray( int array[], int arr_len) {
+  int new_array[arr_len * 2];
+
+  for ( int i = 0; i < arr_len; i++ ) {
+    new_array[i] = array[i];
+  }
+  
+  return new_array;
 }
 /* EOF */
