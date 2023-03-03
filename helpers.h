@@ -18,7 +18,7 @@ int mean( const int array[], int start, int end );
  * array[] - The array of values                                             *
  * start - The starting point of the interval                                *
  * end - The ending point of the interval                                    */
-int max( const int array[], int start, int end );
+int max( const int array[], int start, int end ); //need to change the name of the function
 
 /* Calculates the mean of an array over the interval [start, end)            *
  * array[] - The array of values                                             *
