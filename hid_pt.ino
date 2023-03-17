@@ -291,7 +291,7 @@ int findPeaks( const long signal[], int peak_indices[] ) {
   
   int peak_index = 0, peak_value = 0, num_peaks = 0;
   
-  long baseline = mean( signal, 0, signal_buffer_length );
+  long baseline = meanl( signal, 0, signal_buffer_length );
   
   for ( int i = 0; i < signal_buffer_length; i++ ) {
     if ( signal[i] > baseline ) {
